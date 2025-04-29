@@ -1,34 +1,48 @@
-<?php 
-// Memastikan parameter folder_id dan user_id dikirimkan
-if (!isset($_GET['folder_id']) || !isset($_GET['user_id'])) {
-    echo "Folder ID and User ID are required!";
-    exit;
+<?php
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    require_once('koneksi.php');
+
+    // Ambil data dari POST
+    $folder_id = $_POST['folder_id'] ?? '';
+    $user_id = $_POST['user_id'] ?? '';
+
+    if (empty($folder_id) || empty($user_id)) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Missing parameters']);
+        exit;
+    }
+
+    // Hindari SQL Injection
+    $folder_id = mysqli_real_escape_string($con, $folder_id);
+    $user_id = mysqli_real_escape_string($con, $user_id);
+
+    // Ambil catatan yang sesuai dengan folder dan user
+    $sql = "SELECT id, title FROM tb_notes WHERE folder_id = '$folder_id' AND user_id = '$user_id'";
+    $result = mysqli_query($con, $sql);
+
+    if ($result) {
+        $notes = [];
+        while ($row = mysqli_fetch_assoc($result)) {
+            $notes[] = $row;
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'result' => $notes
+        ]);
+    } else {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . mysqli_error($con)
+        ]);
+    }
+
+    mysqli_close($con);
+} else {
+    http_response_code(405);
+    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
 }
-
-// Mengambil nilai dari parameter GET
-$folder_id = $_GET['folder_id'];
-$user_id = $_GET['user_id'];
-
-// Koneksi ke database
-require_once('koneksi.php');
-
-// Membuat query SQL dengan validasi user_id
-$sql = "SELECT * FROM tb_notes WHERE folder_id = '$folder_id' AND user_id = '$user_id'";
-$r = mysqli_query($con, $sql);
-
-$result = array();
-
-// Looping semua data
-while ($row = mysqli_fetch_array($r)) {
-    array_push($result, array(
-        "id" => $row['id'],
-        "title" => $row['title'],
-    ));
-}
-
-// Mengembalikan hasil dalam format JSON
-echo json_encode(array('result' => $result));
-
-// Menutup koneksi
-mysqli_close($con);
 ?>

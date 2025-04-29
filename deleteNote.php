@@ -1,25 +1,37 @@
 <?php
-    // Memastikan parameter id dan user_id dikirimkan
-    if (!isset($_GET['id']) || !isset($_GET['user_id'])) {
-        echo "Note ID and User ID are required!";
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    require_once('koneksi.php');
+    
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    
+    if (empty($input['id']) || empty($input['user_id'])) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Missing parameters']);
         exit;
     }
-
-    // Mengambil nilai yang dikirimkan oleh front-end
-    $id = $_GET['id'];
-    $user_id = $_GET['user_id'];
-
-    // Membangun query SQL dengan validasi user_id
+    
+    $id = mysqli_real_escape_string($con, $input['id']);
+    $user_id = mysqli_real_escape_string($con, $input['user_id']);
+    
     $sql = "DELETE FROM tb_notes WHERE id = '$id' AND user_id = '$user_id'";
-
-    // Koneksi ke database
-    require_once('koneksi.php');
+    
     if (mysqli_query($con, $sql)) {
-        echo "Success Deleted the Note!";
+        $affected = mysqli_affected_rows($con);
+        if ($affected > 0) {
+            echo json_encode(['status' => 'success', 'message' => 'Note deleted']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'No note found']);
+        }
     } else {
-        echo "Fail to Delete Note!";
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => 'Database error']);
     }
-
-    // Menutup koneksi MySQL
+    
     mysqli_close($con);
+} else {
+    http_response_code(405);
+    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
+}
 ?>
